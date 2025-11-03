@@ -9,7 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -22,6 +23,11 @@ import com.example.lab_week_09.ui.theme.LAB_WEEK_09Theme
 // Previously we extended AppCompatActivity,
 // now we extend ComponentActivity
 class MainActivity : ComponentActivity() {
+    //Declare a data class called Student
+    data class Student(
+        var name: String
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Here, we use setContent instead of setContentView
@@ -30,15 +36,13 @@ class MainActivity : ComponentActivity() {
             LAB_WEEK_09Theme {
                 // A surface container using the 'background' color from the theme
                 Surface(
-                    // We use Modifier.fillMaxSize() to make the surface fill the whole screen
+                    //We use Modifier.fillMaxSize() to make the surface fill the whole screen
                     modifier = Modifier.fillMaxSize(),
-                    // We use MaterialTheme.colorScheme.background to get the background color
-                    // and set it as the color of the surface
+                    //We use MaterialTheme.colorScheme.background to get the background color
+                    //and set it as the color of the surface
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val list = listOf("Tanu", "Tina", "Tono")
-                    // Here, we call the Home composable
-                    Home(list)
+                    Home()
                 }
             }
         }
@@ -56,65 +60,112 @@ class MainActivity : ComponentActivity() {
 // So, we create another composable function called PreviewHome
 // and we pass the list as a parameter
 @Composable
-fun Home(
-    // Here, we define a parameter called items
-    items: List<String>,
+fun Home() {
+    //We use mutableStateListOf to make the list mutable
+    //This is so that we can add or remove items from the list
+    //If you're still confused, this is basically the same concept as using useState in React
+    val listData = remember {
+        mutableStateListOf(
+            MainActivity.Student("Tanu"),
+            MainActivity.Student("Tina"),
+            MainActivity.Student("Tono")
+        )
+    }
+
+    //Here, we create a mutable state of Student
+    //This is so that we can get the value of the input field
+    var inputField by remember { mutableStateOf(MainActivity.Student("")) }
+
+    //We call the HomeContent composable
+    //Here, we pass:
+    //listData to show the list of items inside HomeContent
+    //inputField to show the input field value inside HomeContent
+    //A lambda function to update the value of the inputField
+    //A lambda function to add the inputField to the listData
+    HomeContent(
+        listData,
+        inputField,
+        { input -> inputField = inputField.copy(name = input) },
+        {
+            if (inputField.name.isNotBlank()) {
+                listData.add(inputField)
+                inputField = MainActivity.Student("")
+            }
+        }
+    )
+}
+
+//Here, we create a composable function called HomeContent
+//HomeContent is used to display the content of the Home composable
+@Composable
+fun HomeContent(
+    listData: SnapshotStateList<MainActivity.Student>,
+    inputField: MainActivity.Student,
+    onInputValueChange: (String) -> Unit,
+    onButtonClick: () -> Unit
 ) {
-    // Here, we use LazyColumn to lazily display a list of items horizontally
-    // LazyColumn is more efficient than Column
-    // because it only composes and lays out the currently visible items
-    // much like a RecyclerView
-    // You can also use LazyRow to lazily display a list of items horizontally
+    //Here, we use LazyColumn to display a list of items lazily
     LazyColumn {
-        // Here, we use item to display an item inside the LazyColumn
+        //Here, we use item to display an item inside the LazyColumn
         item {
             Column(
-                // Modifier.padding(16.dp) is used to add padding to the Column
-                // You can also use Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                // to add padding horizontally and vertically
-                // or Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp)
-                // to add padding to each side
+                //Modifier.padding(16.dp) is used to add padding to the Column
+                //You can also use Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                //to add padding horizontally and vertically
+                //or Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp)
+                //to add padding to each side
                 modifier = Modifier
                     .padding(16.dp)
                     .fillMaxSize(),
-                // Alignment.CenterHorizontally is used to align the Column horizontally
-                // You can also use verticalArrangement = Arrangement.Center to align the Column vertically
+                //Alignment.CenterHorizontally is used to align the Column horizontally
+                //You can also use verticalArrangement = Arrangement.Center to align the Column vertically
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = stringResource(id = R.string.enter_item)
                 )
-                // Here, we use TextField to display a text input field
+                //Here, we use TextField to display a text input field
                 TextField(
-                    // Set the value of the input field
-                    value = "",
-                    // Set the keyboard type of the input field
+                    //Set the value of the input field
+                    value = inputField.name,
+                    //Set what happens when the value of the input field changes
+                    onValueChange = {
+                        //Here, we call the onInputValueChange lambda function
+                        //and pass the value of the input field as a parameter
+                        //This is so that we can update the value of the inputField
+                        onInputValueChange(it)
+                    },
+                    //Set the keyboard type of the input field
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                    // Set what happens when the value of the input field changes
-                    onValueChange = { }
+                        keyboardType = KeyboardType.Text
+                    )
                 )
-                // Here, we use Button to display a button
-                // the onClick parameter is used to set what happens when the button is clicked
-                Button(onClick = { }) {
-                    // Set the text of the button
+                //Here, we use Button to display a button
+                //the onClick parameter is used to set what happens when the button is clicked
+                Button(onClick = {
+                    //Here, we call the onButtonClick lambda function
+                    //This is so that we can add the inputField value to the listData
+                    //and reset the value of the inputField
+                    onButtonClick()
+                }) {
+                    //Set the text of the button
                     Text(
                         text = stringResource(id = R.string.button_click)
                     )
                 }
             }
         }
-        // Here, we use items to display a list of items inside the LazyColumn
-        // This is the RecyclerView replacement
-        items(items) { item ->
+        //Here, we use items to display a list of items inside the LazyColumn
+        //This is the RecyclerView replacement
+        //We pass the listData as a parameter
+        items(listData) { item ->
             Column(
                 modifier = Modifier
                     .padding(vertical = 4.dp)
                     .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(text = item)
+                Text(text = item.name)
             }
         }
     }
@@ -126,5 +177,5 @@ fun Home(
 @Preview(showBackground = true)
 @Composable
 fun PreviewHome() {
-    Home(listOf("Tanu", "Tina", "Tono"))
+    Home()
 }
