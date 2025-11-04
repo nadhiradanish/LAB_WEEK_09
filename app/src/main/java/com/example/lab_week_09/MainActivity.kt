@@ -23,6 +23,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.lab_week_09.ui.theme.LAB_WEEK_09Theme
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
 class MainActivity : ComponentActivity() {
 
@@ -47,40 +50,20 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-//Here, we create a composable function called App
-//This will be the root composable of the app
 @Composable
 fun App(navController: NavHostController) {
-    //Here, we use NavHost to create a navigation graph
-    //We pass the navController as a parameter
-    //We also set the startDestination to "home"
-    //This means that the app will start with the Home composable
     NavHost(
         navController = navController,
         startDestination = "home"
     ) {
-        //Here, we create a route called "home"
-        //We pass the Home composable as a parameter
-        //This means that when the app navigates to "home",
-        //the Home composable will be displayed
         composable("home") {
-            //Here, we pass a lambda function that navigates to "resultContent"
             Home { navController.navigate("resultContent/?listData=$it") }
         }
 
-        //Here, we create a route called "resultContent"
-        //We pass the ResultContent composable as a parameter
-        //This means that when the app navigates to "resultContent",
-        //the ResultContent composable will be displayed
-        //You can also define arguments for the route
-        //Here, we define a String argument called "listData"
-        //We use navArgument to define the argument
-        //We use NavType.StringType to define the type of the argument
         composable(
             "resultContent/?listData={listData}",
             arguments = listOf(navArgument("listData") { type = NavType.StringType })
         ) {
-            //Here, we pass the value of the argument to the ResultContent
             ResultContent(it.arguments?.getString("listData").orEmpty())
         }
     }
@@ -100,6 +83,13 @@ fun Home(
 
     var inputField by remember { mutableStateOf(MainActivity.Student("")) }
 
+    // 🔹 Setup Moshi untuk konversi ke JSON
+    val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+    val type = Types.newParameterizedType(List::class.java, MainActivity.Student::class.java)
+    val adapter = moshi.adapter<List<MainActivity.Student>>(type)
+
     HomeContent(
         listData = listData,
         inputField = inputField,
@@ -111,7 +101,9 @@ fun Home(
             }
         },
         navigateFromHomeToResult = {
-            navigateFromHomeToResult(listData.joinToString { it.name })
+            // 🔹 Ubah listData ke JSON
+            val jsonList = adapter.toJson(listData)
+            navigateFromHomeToResult(jsonList)
         }
     )
 }
@@ -170,19 +162,46 @@ fun HomeContent(
     }
 }
 
-//Here, we create a composable function called ResultContent
-//ResultContent accepts a String parameter called listData from the Home
-//then displays the value of listData to the screen
+// 🔹 Sekarang ResultContent menampilkan daftar nama hasil parsing JSON
 @Composable
 fun ResultContent(listData: String) {
-    Column(
+    val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+    val type = Types.newParameterizedType(List::class.java, MainActivity.Student::class.java)
+    val adapter = moshi.adapter<List<MainActivity.Student>>(type)
+
+    // Parse JSON ke list object
+    val studentList = remember(listData) {
+        adapter.fromJson(listData) ?: emptyList()
+    }
+
+    LazyColumn(
         modifier = Modifier
-            .padding(vertical = 4.dp)
+            .padding(16.dp)
             .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        //Here, we call the OnBackgroundItemText UI Element
-        OnBackgroundItemText(text = listData)
+        item {
+            OnBackgroundTitleText("Student List")
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        items(studentList) { student ->
+            Card(
+                modifier = Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                ) {
+                    OnBackgroundItemText(text = student.name)
+                }
+            }
+        }
     }
 }
 
